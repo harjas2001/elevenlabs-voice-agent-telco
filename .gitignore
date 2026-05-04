@@ -15,7 +15,7 @@ build/
 *.egg
 .eggs/
 venv/
-elevenlabs/
+myenv/
 env/
 .venv/
 .mypy_cache/
