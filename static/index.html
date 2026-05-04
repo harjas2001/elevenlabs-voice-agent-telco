@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maya — Voice Agent Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    /* ── Reset & Variables ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #07080C;
+      --surface:      #0E1015;
+      --surface-2:    #13151D;
+      --border:       #1C1F2B;
+      --border-hi:    #2A2E40;
+      --accent:       #FF5733;
+      --accent-dim:   rgba(255, 87, 51, 0.10);
+      --accent-glow:  rgba(255, 87, 51, 0.30);
+      --ok:           #00E5A0;
+      --ok-dim:       rgba(0, 229, 160, 0.10);
+      --danger:       #FF4565;
+      --danger-dim:   rgba(255, 69, 101, 0.10);
+      --warn:         #FFB830;
+      --text:         #E8EAF2;
+      --text-2:       #7A819A;
+      --text-3:       #363B52;
+      --ui:           'Syne', sans-serif;
+      --mono:         'IBM Plex Mono', monospace;
+      --radius:       10px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--ui);
+      font-size: 14px;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      height: 100vh;
+    }
+
+    /* ── Left — Call Panel ──────────────────────────────────────────────── */
+    .call-panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* subtle noise overlay */
+    .call-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .call-panel > * { position: relative; z-index: 1; }
+
+    /* Agent Header */
+    .agent-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 24px 28px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .agent-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FF5733 0%, #FF8C60 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .agent-meta { flex: 1; }
+    .agent-name {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .agent-sub {
+      font-size: 12px;
+      color: var(--text-2);
+      font-weight: 400;
+      margin-top: 1px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--mono);
+      letter-spacing: 0.5px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-hi);
+      color: var(--text-2);
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    .status-badge.connected {
+      background: var(--ok-dim);
+      border-color: var(--ok);
+      color: var(--ok);
+    }
+    .status-badge.speaking-ai {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .status-badge.listening {
+      background: rgba(138, 110, 255, 0.10);
+      border-color: #8A6EFF;
+      color: #8A6EFF;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .status-badge.connected .status-dot,
+    .status-badge.speaking-ai .status-dot,
+    .status-badge.listening .status-dot {
+      animation: blink 1.4s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Waveform */
+    .waveform-wrap {
+      padding: 28px 28px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .waveform {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 56px;
+    }
+
+    .wave-bar {
+      width: 3px;
+      height: 3px;
+      border-radius: 3px;
+      background: var(--accent);
+      opacity: 0.3;
+      transition: height 0.15s ease, opacity 0.3s ease;
+    }
+
+    .wave-bar.speaking {
+      opacity: 1;
+      animation: wavePulse var(--dur, 0.6s) var(--del, 0s) ease-in-out infinite alternate;
+    }
+
+    .wave-bar.listening {
+      opacity: 0.5;
+      height: 5px;
+      animation: breathe 2.2s ease-in-out infinite;
+      background: #8A6EFF;
+    }
+
+    @keyframes wavePulse {
+      0%   { height: 3px; }
+      100% { height: var(--h, 24px); }
+    }
+
+    @keyframes breathe {
+      0%, 100% { opacity: 0.25; transform: scaleY(1); }
+      50%       { opacity: 0.7;  transform: scaleY(2.5); }
+    }
+
+    .mode-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-3);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      height: 16px;
+      transition: color 0.3s ease;
+    }
+
+    /* Transcript */
+    .transcript {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-hi) transparent;
+    }
+
+    .transcript::-webkit-scrollbar { width: 4px; }
+    .transcript::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
+
+    .transcript-placeholder {
+      margin: auto;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .message {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      animation: fadeUp 0.25s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user { flex-direction: row-reverse; }
+
+    .msg-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .message.ai   .msg-avatar { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
+    .message.user .msg-avatar { background: rgba(138, 110, 255, 0.15); color: #8A6EFF; border: 1px solid #8A6EFF; }
+
+    .msg-bubble {
+      max-width: 82%;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      line-height: 1.6;
+    }
+    .message.ai   .msg-bubble { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 3px; }
+    .message.user .msg-bubble { background: rgba(138, 110, 255, 0.12); border: 1px solid rgba(138, 110, 255, 0.3); color: var(--text); border-bottom-right-radius: 3px; }
+
+    .msg-time {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-3);
+      margin-top: 4px;
+      padding: 0 2px;
+    }
+    .message.user .msg-time { text-align: right; }
+
+    /* Controls */
+    .controls {
+      padding: 20px 28px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .call-btn {
+      width: 100%;
+      padding: 15px;
+      border-radius: var(--radius);
+      border: none;
+      font-family: var(--ui);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      letter-spacing: 0.2px;
+    }
+
+    .call-btn.start {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .call-btn.start:hover { transform: translateY(-1px); box-shadow: 0 6px 28px var(--accent-glow); }
+    .call-btn.start:active { transform: translateY(0); }
+
+    .call-btn.end {
+      background: var(--danger-dim);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+    .call-btn.end:hover { background: rgba(255, 69, 101, 0.18); }
+
+    .call-btn.loading {
+      background: var(--surface-2);
+      color: var(--text-2);
+      border: 1px solid var(--border-hi);
+      cursor: not-allowed;
+    }
+
+    .btn-icon { font-size: 18px; line-height: 1; }
+
+    .error-msg {
+      font-size: 12px;
+      color: var(--danger);
+      text-align: center;
+      min-height: 16px;
+      font-family: var(--mono);
+    }
+
+    /* ── Right — Analytics Panel ─────────────────────────────────────────── */
+    .analytics-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .analytics-header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .analytics-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+    }
+
+    .analytics-sub {
+      font-size: 12px;
+      color: var(--text-2);
+      margin-top: 2px;
+    }
+
+    .runtime-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-2);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 5px 12px;
+      border-radius: 20px;
+    }
+
+    .analytics-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-hi) transparent;
+    }
+
+    .analytics-body::-webkit-scrollbar { width: 4px; }
+    .analytics-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.3s ease;
+    }
+
+    .kpi-card:hover { border-color: var(--border-hi); }
+
+    .kpi-value {
+      font-family: var(--mono);
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: -1px;
+      line-height: 1;
+      margin-bottom: 8px;
+      transition: color 0.3s ease;
+    }
+
+    .kpi-value.positive { color: var(--ok); }
+    .kpi-value.danger   { color: var(--danger); }
+    .kpi-value.accent   { color: var(--accent); }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-2);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .kpi-delta {
+      font-family: var(--mono);
+      font-size: 11px;
+      margin-top: 6px;
+      color: var(--text-3);
+    }
+
+    /* Live session card */
+    .live-card {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: none;
+    }
+
+    .live-card.active { display: block; }
+
+    .live-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .live-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: blink 1s ease-in-out infinite;
+    }
+
+    .live-timer {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--accent);
+      letter-spacing: 1px;
+    }
+
+    .live-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .live-stat-label {
+      font-size: 11px;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .live-stat-value {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    /* Session History */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text-2);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .session-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .session-table th {
+      text-align: left;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 0 12px 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .session-table td {
+      padding: 12px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    .session-table tr:last-child td { border-bottom: none; }
+    .session-table tr:hover td { background: var(--surface); }
+
+    .session-table td:is(:nth-child(3), :nth-child(4)) {
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--mono);
+    }
+
+    .tag.contained { background: var(--ok-dim); color: var(--ok); border: 1px solid rgba(0,229,160,0.3); }
+    .tag.escalated  { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,69,101,0.3); }
+
+    .empty-history {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-3);
+      font-size: 13px;
+    }
+
+    /* ── Scrollbar polish ───────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── LEFT: Voice Interface ──────────────────────────────────────────── -->
+  <div class="call-panel">
+
+    <div class="agent-header">
+      <div class="agent-avatar">M</div>
+      <div class="agent-meta">
+        <div class="agent-name">Maya</div>
+        <div class="agent-sub">Telco Customer Support Agent</div>
+      </div>
+      <div class="status-badge" id="status-badge">
+        <span class="status-dot"></span>
+        <span id="status-text">Ready</span>
+      </div>
+    </div>
+
+    <div class="waveform-wrap">
+      <div class="waveform" id="waveform"></div>
+      <div class="mode-label" id="mode-label">——</div>
+    </div>
+
+    <div class="transcript" id="transcript">
+      <div class="transcript-placeholder">
+        Start a call to see the live transcript<br />
+        <span style="font-size:11px;font-family:var(--mono);opacity:0.5">Microphone access required</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="call-btn start" id="call-btn" onclick="toggleCall()">
+        <span class="btn-icon">⬤</span> Start Call
+      </button>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT: Analytics Dashboard ────────────────────────────────────── -->
+  <div class="analytics-panel">
+
+    <div class="analytics-header">
+      <div>
+        <div class="analytics-title">Session Analytics</div>
+        <div class="analytics-sub">ElevenLabs · ElevenAgents · Telco Demo</div>
+      </div>
+      <div class="runtime-badge" id="runtime-badge">0 sessions this runtime</div>
+    </div>
+
+    <div class="analytics-body">
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-value accent" id="kpi-total">0</div>
+          <div class="kpi-label">Total Sessions</div>
+          <div class="kpi-delta" id="kpi-total-delta">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpi-containment">—</div>
+          <div class="kpi-label">Containment Rate</div>
+          <div class="kpi-delta" id="kpi-containment-delta">calls resolved by Maya</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpi-turns">—</div>
+          <div class="kpi-label">Avg Turns / Session</div>
+          <div class="kpi-delta" id="kpi-turns-delta">user exchanges</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpi-escalations">0</div>
+          <div class="kpi-label">Escalations</div>
+          <div class="kpi-delta" id="kpi-esc-delta">transferred to agent</div>
+        </div>
+      </div>
+
+      <!-- Live Session Card (visible during active call) -->
+      <div class="live-card" id="live-card">
+        <div class="live-card-header">
+          <div class="live-label">
+            <span class="live-dot"></span> Live Session
+          </div>
+          <div class="live-timer" id="live-timer">0:00</div>
+        </div>
+        <div class="live-stats">
+          <div>
+            <div class="live-stat-label">Turns</div>
+            <div class="live-stat-value" id="live-turns">0</div>
+          </div>
+          <div>
+            <div class="live-stat-label">Status</div>
+            <div class="live-stat-value" id="live-status" style="font-size:13px;font-family:var(--ui);color:var(--text-2)">Connecting…</div>
+          </div>
+          <div>
+            <div class="live-stat-label">Escalated</div>
+            <div class="live-stat-value" id="live-escalated" style="color:var(--ok)">No</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session History -->
+      <div>
+        <div class="section-title">Session History</div>
+        <div id="session-history">
+          <div class="empty-history">No completed sessions yet.<br />Start a call to begin.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { Conversation } from 'https://esm.sh/@11labs/client@latest';
+
+  // ── State ───────────────────────────────────────────────────────────────
+
+  let conversation = null;
+  let sessionState = null;
+  let timerInterval = null;
+  let metricsPollInterval = null;
+  const ESCALATION_PHRASE = 'connect you with one of our specialists';
+
+  // ── Waveform Setup ──────────────────────────────────────────────────────
+
+  const waveformEl = document.getElementById('waveform');
+  const BAR_COUNT = 32;
+
+  for (let i = 0; i < BAR_COUNT; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'wave-bar';
+    // Random animation params per bar for organic look
+    const h   = 10 + Math.random() * 36;   // target height when speaking
+    const dur = 0.35 + Math.random() * 0.5; // animation duration
+    const del = Math.random() * 0.25;        // stagger delay
+    bar.style.setProperty('--h',   `${h.toFixed(1)}px`);
+    bar.style.setProperty('--dur', `${dur.toFixed(2)}s`);
+    bar.style.setProperty('--del', `${del.toFixed(2)}s`);
+    waveformEl.appendChild(bar);
+  }
+
+  function setWaveMode(mode) {
+    const bars = waveformEl.querySelectorAll('.wave-bar');
+    bars.forEach(b => { b.classList.remove('speaking', 'listening'); });
+    if (mode === 'speaking') bars.forEach(b => b.classList.add('speaking'));
+    if (mode === 'listening') bars.forEach(b => b.classList.add('listening'));
+  }
+
+  // ── Status Badge ────────────────────────────────────────────────────────
+
+  function setStatus(label, cls) {
+    const badge = document.getElementById('status-badge');
+    const text  = document.getElementById('status-text');
+    badge.className = `status-badge ${cls || ''}`;
+    text.textContent = label;
+  }
+
+  // ── Transcript ──────────────────────────────────────────────────────────
+
+  function clearTranscript() {
+    document.getElementById('transcript').innerHTML = '';
+  }
+
+  function addMessage(source, text) {
+    const transcript = document.getElementById('transcript');
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `message ${source}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'msg-avatar';
+    avatar.textContent = source === 'ai' ? 'M' : 'U';
+
+    const inner = document.createElement('div');
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.textContent = text;
+
+    const time = document.createElement('div');
+    time.className = 'msg-time';
+    time.textContent = now;
+
+    inner.appendChild(bubble);
+    inner.appendChild(time);
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(inner);
+    transcript.appendChild(wrapper);
+
+    transcript.scrollTop = transcript.scrollHeight;
+    return now;
+  }
+
+  // ── Live Session Timer ──────────────────────────────────────────────────
+
+  function startTimer() {
+    const el = document.getElementById('live-timer');
+    timerInterval = setInterval(() => {
+      if (!sessionState) return;
+      const secs = Math.floor((Date.now() - sessionState.startTime) / 1000);
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      el.textContent = `${m}:${String(s).padStart(2, '0')}`;
+    }, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  // ── Metrics Polling ─────────────────────────────────────────────────────
+
+  async function fetchAndRenderMetrics() {
+    try {
+      const res  = await fetch('/api/metrics');
+      const data = await res.json();
+      renderMetrics(data);
+    } catch { /* silently ignore during dev */ }
+  }
+
+  function renderMetrics(m) {
+    const total = m.total_sessions;
+
+    document.getElementById('kpi-total').textContent       = total;
+    document.getElementById('runtime-badge').textContent   = `${total} session${total !== 1 ? 's' : ''} this runtime`;
+
+    if (total === 0) {
+      document.getElementById('kpi-containment').textContent = '—';
+      document.getElementById('kpi-turns').textContent        = '—';
+      setKpiClass('kpi-containment', '');
+      setKpiClass('kpi-escalations', '');
+      return;
+    }
+
+    const containment = m.containment_rate;
+    document.getElementById('kpi-containment').textContent = `${containment}%`;
+    setKpiClass('kpi-containment', containment >= 80 ? 'positive' : containment >= 60 ? '' : 'danger');
+
+    document.getElementById('kpi-turns').textContent = m.avg_turns;
+
+    const esc = m.total_escalations;
+    document.getElementById('kpi-escalations').textContent = esc;
+    setKpiClass('kpi-escalations', esc === 0 ? '' : 'danger');
+  }
+
+  function setKpiClass(id, cls) {
+    const el = document.getElementById(id);
+    el.className = `kpi-value ${cls}`;
+  }
+
+  async function fetchAndRenderHistory() {
+    try {
+      const res      = await fetch('/api/sessions');
+      const sessions = await res.json();
+      renderHistory(sessions);
+    } catch { /* ignore */ }
+  }
+
+  function renderHistory(sessions) {
+    const container = document.getElementById('session-history');
+
+    if (!sessions || sessions.length === 0) {
+      container.innerHTML = '<div class="empty-history">No completed sessions yet.<br />Start a call to begin.</div>';
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'session-table';
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Duration</th>
+          <th>Turns</th>
+          <th>Status</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="session-rows"></tbody>
+    `;
+
+    const tbody = table.querySelector('#session-rows');
+    sessions.forEach((s, i) => {
+      const num      = sessions.length - i;
+      const dur      = formatDuration(s.duration_seconds || 0);
+      const turns    = s.turn_count || 0;
+      const escalated = s.escalated;
+      const recorded = s.recorded_at ? new Date(s.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="color:var(--text-2);font-family:var(--mono)">${num}</td>
+        <td style="font-family:var(--mono)">${dur}</td>
+        <td>${turns}</td>
+        <td><span class="tag ${escalated ? 'escalated' : 'contained'}">${escalated ? '⚠ Escalated' : '✓ Contained'}</span></td>
+        <td style="color:var(--text-2)">${recorded}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(table);
+  }
+
+  function formatDuration(secs) {
+    const m = Math.floor(secs / 60);
+    const s = Math.round(secs % 60);
+    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  }
+
+  // ── Session Recording ───────────────────────────────────────────────────
+
+  async function saveSession() {
+    if (!sessionState) return;
+
+    const endTime        = Date.now();
+    const durationSeconds = (endTime - sessionState.startTime) / 1000;
+
+    const payload = {
+      session_id:       sessionState.conversationId,
+      start_time:       new Date(sessionState.startTime).toISOString(),
+      end_time:         new Date(endTime).toISOString(),
+      duration_seconds: durationSeconds,
+      turn_count:       sessionState.turnCount,
+      escalated:        sessionState.escalated,
+      transcript:       sessionState.transcript,
+    };
+
+    try {
+      await fetch('/api/sessions', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+      await fetchAndRenderMetrics();
+      await fetchAndRenderHistory();
+    } catch (e) {
+      console.error('Failed to save session:', e);
+    }
+  }
+
+  // ── Call Toggle ─────────────────────────────────────────────────────────
+
+  window.toggleCall = async function () {
+    if (conversation) {
+      await endCall();
+    } else {
+      await startCall();
+    }
+  };
+
+  async function startCall() {
+    setError('');
+    setButtonState('loading');
+    setStatus('Connecting…', '');
+
+    let signedUrl;
+    try {
+      const res = await fetch('/api/signed-url');
+      if (!res.ok) throw new Error('Backend error — is the server running?');
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      signedUrl = data.signed_url;
+    } catch (e) {
+      setError(e.message);
+      setButtonState('start');
+      setStatus('Ready', '');
+      return;
+    }
+
+    clearTranscript();
+    sessionState = {
+      conversationId: null,
+      startTime: Date.now(),
+      turnCount: 0,
+      escalated: false,
+      transcript: [],
+    };
+
+    document.getElementById('live-card').classList.add('active');
+    document.getElementById('live-turns').textContent    = '0';
+    document.getElementById('live-status').textContent   = 'Connecting…';
+    document.getElementById('live-escalated').textContent = 'No';
+    document.getElementById('live-escalated').style.color = 'var(--ok)';
+    startTimer();
+
+    try {
+      conversation = await Conversation.startSession({
+        signedUrl,
+
+        onConnect: ({ conversationId }) => {
+          if (sessionState) sessionState.conversationId = conversationId;
+          setStatus('Connected', 'connected');
+          setButtonState('end');
+          document.getElementById('live-status').textContent = 'Active';
+        },
+
+        onDisconnect: () => {
+          handleCallEnded();
+        },
+
+        onMessage: ({ message, source }) => {
+          const role = source === 'ai' ? 'ai' : 'user';
+          const ts   = addMessage(role, message);
+
+          if (sessionState) {
+            sessionState.transcript.push({ source: role, message, timestamp: ts });
+            if (role === 'user') {
+              sessionState.turnCount++;
+              document.getElementById('live-turns').textContent = sessionState.turnCount;
+            }
+            if (role === 'ai' && message.toLowerCase().includes(ESCALATION_PHRASE)) {
+              sessionState.escalated = true;
+              document.getElementById('live-escalated').textContent = 'Yes';
+              document.getElementById('live-escalated').style.color = 'var(--danger)';
+            }
+          }
+        },
+
+        onModeChange: ({ mode }) => {
+          if (mode === 'speaking') {
+            setStatus('Maya Speaking', 'speaking-ai');
+            setWaveMode('speaking');
+            document.getElementById('mode-label').textContent = 'MAYA SPEAKING';
+            document.getElementById('mode-label').style.color = 'var(--accent)';
+            document.getElementById('live-status').textContent = 'Maya speaking';
+          } else {
+            setStatus('Listening', 'listening');
+            setWaveMode('listening');
+            document.getElementById('mode-label').textContent = 'LISTENING';
+            document.getElementById('mode-label').style.color = '#8A6EFF';
+            document.getElementById('live-status').textContent = 'Listening';
+          }
+        },
+
+        onError: (msg) => {
+          setError(`Call error — ${msg}`);
+          handleCallEnded();
+        },
+      });
+    } catch (e) {
+      setError(`Could not start call — ${e.message}`);
+      setButtonState('start');
+      setStatus('Ready', '');
+      document.getElementById('live-card').classList.remove('active');
+      stopTimer();
+      sessionState = null;
+    }
+  }
+
+  async function endCall() {
+    if (conversation) {
+      try { await conversation.endSession(); } catch { /* ignore */ }
+      conversation = null;
+    }
+    handleCallEnded();
+  }
+
+  function handleCallEnded() {
+    conversation = null;
+
+    setButtonState('start');
+    setStatus('Ready', '');
+    setWaveMode('idle');
+    document.getElementById('mode-label').textContent = '——';
+    document.getElementById('mode-label').style.color = '';
+    document.getElementById('live-card').classList.remove('active');
+    stopTimer();
+
+    if (sessionState && sessionState.turnCount > 0) {
+      saveSession();
+    }
+
+    sessionState = null;
+  }
+
+  // ── Button State ────────────────────────────────────────────────────────
+
+  function setButtonState(state) {
+    const btn = document.getElementById('call-btn');
+    btn.className = `call-btn ${state}`;
+    if (state === 'start') {
+      btn.innerHTML = '<span class="btn-icon">⬤</span> Start Call';
+      btn.onclick = toggleCall;
+    } else if (state === 'end') {
+      btn.innerHTML = '<span class="btn-icon">◼</span> End Call';
+      btn.onclick = toggleCall;
+    } else {
+      btn.innerHTML = '<span class="btn-icon">◌</span> Connecting…';
+      btn.onclick = null;
+    }
+  }
+
+  function setError(msg) {
+    document.getElementById('error-msg').textContent = msg;
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────
+
+  fetchAndRenderMetrics();
+  fetchAndRenderHistory();
+  // Refresh metrics every 5s to stay in sync with backend
+  metricsPollInterval = setInterval(fetchAndRenderMetrics, 5000);
+</script>
+
+</body>
+</html>
