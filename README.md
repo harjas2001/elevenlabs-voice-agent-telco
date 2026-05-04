@@ -1,4 +1,4 @@
-# elevenlabs-voice-agent-starter
+# elevenlabs-voice-agent
 
 Production-ready deployment pattern for ElevenLabs Conversational AI — voice agent with real-time session analytics.
 
