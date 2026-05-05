@@ -116,3 +116,10 @@ ElevenLabs Conversational AI supports SIP and PSTN via Twilio integration — th
 ## Stack
 
 `Python · FastAPI · httpx · ElevenLabs Conversational AI API · Vanilla JS (ES Modules)`
+
+---
+
+## Built With
+
+- [ElevenLabs Conversational AI](https://elevenlabs.io) — voice agent deployment and STT/TTS APIs
+- [ElevenAgents](https://elevenlabs.io/agents) — managed agent infrastructure
