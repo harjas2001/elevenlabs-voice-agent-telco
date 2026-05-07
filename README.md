@@ -70,6 +70,8 @@ Open `http://localhost:8000` — click **Start Call** and speak.
 ## Demo: client specific interface integrating ElevenLabs agent
 
 <img width="1915" height="907" alt="image" src="https://github.com/user-attachments/assets/e93168ea-8741-4d4e-95d1-a0335e74af4f" />
+### Updated session to have AI summariser card after each session using claude haiku 4.5
+<img width="1472" height="150" alt="image" src="https://github.com/user-attachments/assets/2465e449-78e5-446a-8f74-8e797330a4ff" />
 
 ---
 
