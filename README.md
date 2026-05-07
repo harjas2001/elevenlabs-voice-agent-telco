@@ -1,14 +1,14 @@
 # elevenlabs-voice-agent
 
-Production-ready deployment pattern for ElevenLabs Conversational AI — voice agent with real-time session analytics.
+Production-ready deployment pattern for ElevenLabs Conversational AI, voice agent with real-time session analytics.
 
 ---
 
 ## Background
 
-Built as a reference implementation for deploying ElevenLabs voice agents in an enterprise contact centre context. The demo scenario is a telco customer support agent (billing, plan changes, outage queries) — chosen because it represents one of the highest-volume, highest-stakes use cases for voice AI in market.
+Built as a reference implementation for deploying ElevenLabs voice agents in an enterprise contact centre context. The demo scenario is a telco customer support agent (billing, plan changes, outage queries), chosen because it represents one of the highest-volume, highest-stakes use cases for voice AI in market.
 
-The architecture reflects real enterprise constraints: API credentials never reach the browser, all session events are captured server-side, and the analytics layer surfaces the KPIs an ops team would actually monitor in production — containment rate, escalation triggers, turn depth, and session duration.
+The architecture reflects real enterprise constraints: API credentials never reach the browser, all session events are captured server-side, and the analytics layer surfaces the KPIs an ops team would actually monitor in production, containment rate, escalation triggers, turn depth, and session duration.
 
 ---
 
@@ -67,6 +67,12 @@ Open `http://localhost:8000` — click **Start Call** and speak.
 
 ---
 
+## Demo: client specific interface integrating ElevenLabs agent
+
+<img width="1915" height="907" alt="image" src="https://github.com/user-attachments/assets/e93168ea-8741-4d4e-95d1-a0335e74af4f" />
+
+---
+
 ## Configuration
 
 | Variable | Description |
@@ -88,7 +94,7 @@ Minimum permissions for this project:
 | History | Read |
 | User | Read |
 
-Apply least-privilege and set a monthly credit cap on the key — especially in shared or staging environments.
+Apply least-privilege and set a monthly credit cap on the key, especially in shared or staging environments.
 
 ---
 
@@ -109,7 +115,7 @@ Apply least-privilege and set a monthly credit cap on the key — especially in 
 ```
 
 **Connect to a telephony layer (Twilio, Genesys):**
-ElevenLabs Conversational AI supports SIP and PSTN via Twilio integration — the signed URL pattern in this project maps directly to that flow.
+ElevenLabs Conversational AI supports SIP and PSTN via Twilio integration, the signed URL pattern in this project maps directly to that flow.
 
 ---
 
