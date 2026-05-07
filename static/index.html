@@ -578,6 +578,103 @@
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
+
+    /* ── Session History Cards ──────────────────────────────────────────── */
+    .session-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+
+    .session-card:hover { border-color: var(--border-hi); }
+
+    .session-card-meta {
+      display: grid;
+      grid-template-columns: 28px 1fr 1fr 1fr 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      font-size: 13px;
+    }
+
+    .session-card-meta .meta-num {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    .session-card-meta .meta-val {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-2);
+    }
+
+    .session-card-meta .meta-time {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: right;
+    }
+
+    .summary-strip {
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 24px;
+      background: var(--surface-2);
+    }
+
+    .summary-strip .s-row {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+      font-size: 12px;
+    }
+
+    .summary-strip .s-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      min-width: 62px;
+      flex-shrink: 0;
+    }
+
+    .summary-strip .s-val {
+      color: var(--text-2);
+      line-height: 1.4;
+    }
+
+    .summary-strip .s-row.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .sentiment-pill {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--mono);
+    }
+
+    .sentiment-pill.positive { background: var(--ok-dim);     color: var(--ok);     border: 1px solid rgba(0,229,160,0.25); }
+    .sentiment-pill.neutral  { background: var(--surface);    color: var(--text-2); border: 1px solid var(--border-hi); }
+    .sentiment-pill.negative { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,69,101,0.25); }
+
+    .summary-unavailable {
+      font-size: 11px;
+      font-style: italic;
+      color: var(--text-3);
+      padding: 4px 0;
+      grid-column: 1 / -1;
+    }
+
+    #session-history { display: flex; flex-direction: column; gap: 10px; }
   </style>
 </head>
 <body>
@@ -849,42 +946,65 @@
       return;
     }
 
-    const table = document.createElement('table');
-    table.className = 'session-table';
-    table.innerHTML = `
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Duration</th>
-          <th>Turns</th>
-          <th>Status</th>
-          <th>Time</th>
-        </tr>
-      </thead>
-      <tbody id="session-rows"></tbody>
-    `;
+    container.innerHTML = '';
 
-    const tbody = table.querySelector('#session-rows');
     sessions.forEach((s, i) => {
       const num      = sessions.length - i;
       const dur      = formatDuration(s.duration_seconds || 0);
       const turns    = s.turn_count || 0;
       const escalated = s.escalated;
-      const recorded = s.recorded_at ? new Date(s.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+      const recorded = s.recorded_at
+        ? new Date(s.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : '—';
 
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td style="color:var(--text-2);font-family:var(--mono)">${num}</td>
-        <td style="font-family:var(--mono)">${dur}</td>
-        <td>${turns}</td>
-        <td><span class="tag ${escalated ? 'escalated' : 'contained'}">${escalated ? '⚠ Escalated' : '✓ Contained'}</span></td>
-        <td style="color:var(--text-2)">${recorded}</td>
+      const card = document.createElement('div');
+      card.className = 'session-card';
+
+      // ── Metadata row ────────────────────────────────────────────────────
+      const meta = document.createElement('div');
+      meta.className = 'session-card-meta';
+      meta.innerHTML = `
+        <span class="meta-num">${num}</span>
+        <span class="meta-val">${dur}</span>
+        <span class="meta-val">${turns} turns</span>
+        <span><span class="tag ${escalated ? 'escalated' : 'contained'}">${escalated ? '⚠ Escalated' : '✓ Contained'}</span></span>
+        <span class="meta-time">${recorded}</span>
       `;
-      tbody.appendChild(tr);
-    });
+      card.appendChild(meta);
 
-    container.innerHTML = '';
-    container.appendChild(table);
+      // ── AI Summary strip ────────────────────────────────────────────────
+      const strip = document.createElement('div');
+      strip.className = 'summary-strip';
+
+      const sum = s.summary;
+      if (!sum || sum.issue === 'Summary unavailable') {
+        strip.innerHTML = '<div class="summary-unavailable">AI summary not available for this session</div>';
+      } else {
+        const sentiment = (sum.sentiment || 'neutral').toLowerCase();
+        strip.innerHTML = `
+          <div class="s-row">
+            <span class="s-label">Issue</span>
+            <span class="s-val">${sum.issue || '—'}</span>
+          </div>
+          <div class="s-row">
+            <span class="s-label">Sentiment</span>
+            <span class="s-val"><span class="sentiment-pill ${sentiment}">${sentiment}</span></span>
+          </div>
+          <div class="s-row full-width">
+            <span class="s-label">Outcome</span>
+            <span class="s-val">${sum.outcome || '—'}</span>
+          </div>
+          ${sum.recommended_followup ? `
+          <div class="s-row full-width">
+            <span class="s-label">Follow-up</span>
+            <span class="s-val">${sum.recommended_followup}</span>
+          </div>` : ''}
+        `;
+      }
+
+      card.appendChild(strip);
+      container.appendChild(card);
+    });
   }
 
   function formatDuration(secs) {
