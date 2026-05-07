@@ -39,3 +39,6 @@ sessions/
 *.csv
 *.json
 !package.json
+
+#Environment
+elevenvenv/
